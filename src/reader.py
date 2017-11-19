@@ -2,7 +2,7 @@ import numpy as np
 import scipy.io
 
 
-def fetch_data(fname='face.mat', ratio=0.8):
+def fetch_data(fname='face', ratio=0.8):
     """Bootstrapping helper function for fetching data.
 
     Parameters
@@ -24,32 +24,31 @@ def fetch_data(fname='face.mat', ratio=0.8):
     """
 
     # load `.mat` file
-    data = scipy.io.loadmat('data/%s' % fname)
+    data = scipy.io.loadmat('data/%s.mat' % fname)
 
     # Images
     # N: number of images
-    # K: number of pixels
-    # shape: [N x K]
-    _X = data['X'].T
-    _y = data['l'].T
+    # D: number of pixels
+    _X = data['X']  # shape: [D x N]
+    _y = data['l']  # shape: [1 x N]
 
-    assert(_X.shape[0] == _y.shape[0])
+    assert(_X.shape[1] == _y.shape[1])
     # Number of images
-    N = _X.shape[0]
+    N = _X.shape[1]
 
     # Fix the random seed
     np.random.seed(0)
 
     # Shuffled indeces
-    _mask = np.arange(0, N)
+    _mask = np.arange(N)
     np.random.shuffle(_mask)
 
     # Randomised data
-    X = _X[_mask]
-    y = _y[_mask]
+    X = _X[:, _mask]
+    y = _y[:, _mask]
 
     # Ratition dataset to train and test sets
-    X_train, X_test = X[:int(N * ratio)], X[int(N * ratio):]
-    y_train, y_test = y[:int(N * ratio)], y[int(N * ratio):]
+    X_train, X_test = X[:, :int(N * ratio)], X[:, int(N * ratio):]
+    y_train, y_test = y[:, :int(N * ratio)], y[:, int(N * ratio):]
 
     return {'train': (X_train, y_train), 'test': (X_test, y_test)}
