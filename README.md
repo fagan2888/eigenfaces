@@ -6,4 +6,6 @@
 
 ### macOS
 
-1. Setup environment by executing `source scripts/setup.sh`.
+1. Setup environment `source scripts/setup.sh`
+2. Activate environment `source .env/bin/activate`
+3. Execute script `python src/<name of script>`
