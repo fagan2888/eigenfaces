@@ -1,4 +1,6 @@
+# scientific computing library
 import numpy as np
+# `.mat` to `Python`-compatible data converter
 import scipy.io
 
 

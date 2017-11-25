@@ -44,26 +44,44 @@ _indexes = np.argsort(_l)[::-1]
 l = _l[_indexes]
 v = _v[:, _indexes]
 
-M = np.arange(1, N)
+M = 250
 
-error = []
+V = v[:, :M]
 
-for j, m in enumerate(M):
+_U = np.dot(A, V)
 
-    progress(j, len(M), status='Reconstruction for M=%s' % m)
+U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
 
-    V = v[:, :m]
+W = np.dot(U.T, A)
 
-    _U = np.dot(A, V)
+# train loop
 
-    U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
+# test loop
 
-    W = np.dot(U.T, A)
+X_test, y_test = data['test']
 
-    A_hat = np.dot(U, W)
+error = 0
 
-    error.append(np.mean(np.sum((A - A_hat)**2)))
+sz = X_test.shape[1]
 
-plt.plot(M, error)
+for i in range(sz):
 
-plt.show()
+    progress(i, sz, status='Testing the %dth datapoint' % i)
+
+    x = X_test[:, i].reshape(-1, 1)
+
+    phi = (x - mean_face)
+
+    w = np.dot(phi.T, U)
+
+    E = np.mean((W - w.T)**2, axis=0)
+
+    index = np.argmin(E)
+
+    pred = y_train[:, index]
+    targ = y_test[:, i]
+
+    if pred != targ:
+        error += 1
+
+print(error / sz)

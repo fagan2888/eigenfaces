@@ -1,5 +1,16 @@
+# scientific computing library
 import numpy as np
+
+# visualization tools
 import matplotlib.pyplot as plt
+import seaborn as sns
+
+# prettify plots
+plt.rcParams['figure.figsize'] = [20.0, 15.0]
+sns.set_palette(sns.color_palette("muted"))
+sns.set_style("ticks")
+
+# helper data preprocessor
 from reader import fetch_data
 
 SHAPE = (46, 56)
@@ -8,14 +19,13 @@ data = fetch_data()
 
 X_train, y_train = data['train']
 
-N = X_train.shape[0]
+D, N = X_train.shape
 
 # mean face
 mean_face = X_train.mean(axis=1).reshape(-1, 1)
 
-# plt.imshow(mean_face.reshape(SHAPE).T)
-# plt.savefig('data/out/mean_face_q1a.eps', format='eps', dpi=1000)
-# plt.show()
+plt.imshow(mean_face.reshape(SHAPE).T)
+plt.savefig('data/out/mean_face_q1a.eps', format='eps', dpi=1000)
 
 A = X_train - mean_face
 
