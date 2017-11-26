@@ -18,10 +18,10 @@ def progress(count, total, status='', length=60):
     Examples
     --------
     >>> progress(1, 25, status='Example progress bar!')
-    >>> [=-------------------------] 4% ...Example progress bar!
+    >>> [=-------------------------] 4% <> Example progress bar!
     """
     _filled_len = int(round(length * count / float(total)))
     _percents = round(100.0 * count / float(total), 1)
-    _bar = '=' * _filled_len + '-' * (length - _filled_len)
-    sys.stdout.write('[%s] %s%s ...%s\r' % (_bar, _percents, '%', status))
-    sys.stdout.flush()
+    _bar = '*' * _filled_len + ' ' * (length - _filled_len)
+    sys.stderr.write('\r[%s] %s%s <> %s' % (_bar, _percents, '%', status))
+    sys.stderr.flush()

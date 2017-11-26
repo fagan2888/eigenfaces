@@ -50,7 +50,8 @@ error = []
 
 for j, m in enumerate(M):
 
-    progress(j, len(M), status='Reconstruction for M=%s' % m)
+    progress(j, len(M), status='Reconstruction for M=%d, out of %d.' %
+             (m, len(M)))
 
     V = v[:, :m]
 
@@ -64,6 +65,8 @@ for j, m in enumerate(M):
 
     error.append(np.mean(np.sum((A - A_hat)**2)))
 
-plt.plot(M, error)
+with plt.xkcd():
+
+    plt.plot(M, error)
 
 plt.show()
