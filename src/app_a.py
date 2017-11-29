@@ -1,3 +1,7 @@
+# matplotlib backtest for missing $DISPLAY
+import matplotlib
+matplotlib.use('Agg')
+
 # scientific computing library
 import numpy as np
 
@@ -16,55 +20,98 @@ from reader import fetch_data
 # utility functions
 from utils import progress
 
+# logging module
+import logging
+import coloredlogs
+
+# argument parser
+import argparse
+
 SHAPE = (46, 56)
 
-data = fetch_data()
+if __name__ == '__main__':
 
-X_train, y_train = data['train']
+    # argument parser instance
+    parser = argparse.ArgumentParser()
+    # init log level argument
+    parser.add_argument('--log', type=str,
+                        help='<optionalLog Level (info | debug)')
+    # parse arguments
+    argv = parser.parse_args()
+    # get log level
+    _level = argv.log or ''
 
-D, N = X_train.shape
+    logger = logging.getLogger('app_a')
 
-# mean face
-mean_face = X_train.mean(axis=1).reshape(-1, 1)
+    if _level.upper() == 'INFO':
+        coloredlogs.install(level='IFNO', logger=logger)
+    elif _level.upper() == 'DEBUG':
+        coloredlogs.install(level='DEBUG', logger=logger)
+    else:
+        coloredlogs.install(level='WARNING', logger=logger)
 
-A = X_train - mean_face
+    logger.info('Fetching data...')
+    data = fetch_data()
 
-S = (1 / N) * np.dot(A.T, A)
+    X_train, y_train = data['train']
 
-# Calculate eigenvalues `l` and eigenvectors `v`
-_l, _v = np.linalg.eig(S)
+    D, N = X_train.shape
+    logger.debug('Number of features: D=%d' % D)
+    logger.debug('Number of train data: N=%d' % N)
 
-# Indexes of eigenvalues, sorted by value
-_indexes = np.argsort(_l)[::-1]
+    # mean face
+    mean_face = X_train.mean(axis=1).reshape(-1, 1)
 
-# TODO
-# threshold w's
+    A = X_train - mean_face
+    logger.debug('A.shape=%s' % (A.shape,))
 
-# Sorted eigenvalues and eigenvectors
-l = _l[_indexes]
-v = _v[:, _indexes]
+    S = (1 / N) * np.dot(A.T, A)
+    logger.debug('S.shape=%s' % (S.shape,))
 
-M = np.arange(1, N)
+    # Calculate eigenvalues `w` and eigenvectors `v`
+    logger.info('Calculating eigenvalues and eigenvectors...')
+    _l, _v = np.linalg.eig(S)
 
-error = []
+    # Indexes of eigenvalues, sorted by value
+    logger.info('Sorting eigenvalues...')
+    _indexes = np.argsort(_l)[::-1]
 
-for j, m in enumerate(M):
+    # TODO
+    # threshold w's
+    logger.warning('TODO: threshold eigenvalues')
 
-    progress(j, len(M), status='Reconstruction for M=%d, out of %d.' %
-             (m, len(M)))
+    # Sorted eigenvalues and eigenvectors
+    l = _l[_indexes]
+    logger.debug('l.shape=%s' % (l.shape,))
+    v = _v[:, _indexes]
+    logger.debug('v.shape=%s' % (v.shape,))
 
-    V = v[:, :m]
+    M = np.arange(1, N + 1)
 
-    _U = np.dot(A, V)
+    error = []
 
-    U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
+    logger.info('Reconstruction for M in [%d,%d]...' % (M[0], M[-1]))
+    for j, m in enumerate(M):
 
-    W = np.dot(U.T, A)
+        progress(j + 1, len(M), status='Reconstruction for M=%d' % m)
 
-    A_hat = np.dot(U, W)
+        V = v[:, :m]
 
-    error.append(np.mean(np.sum((A - A_hat)**2)))
+        _U = np.dot(A, V)
 
-plt.plot(M, error)
+        U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
 
-plt.show()
+        W = np.dot(U.T, A)
+
+        A_hat = np.dot(U, W)
+
+        error.append(np.mean(np.sum((A - A_hat)**2)))
+    # TODO
+    # fix bug of progress bar after '\r'
+    print('')
+
+    logger.info('Plotting reconstruction error versus M...')
+    plt.plot(M, error)
+    plt.savefig('data/out/error_versus_M.pdf',
+                format='pdf', dpi=1000, transparent=True)
+    logger.info('Exported at data/out/error_versus_M.pdf...')

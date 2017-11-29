@@ -1,3 +1,7 @@
+# matplotlib backtest for missing $DISPLAY
+import matplotlib
+matplotlib.use('Agg')
+
 # scientific computing library
 import numpy as np
 
@@ -16,73 +20,182 @@ from reader import fetch_data
 # utility functions
 from utils import progress
 
-SHAPE = (46, 56)
+# logging module
+import logging
+import coloredlogs
 
-data = fetch_data()
+# argument parser
+import argparse
 
-X_train, y_train = data['train']
+# time module
+import time
 
-D, N = X_train.shape
+if __name__ == '__main__':
 
-# mean face
-mean_face = X_train.mean(axis=1).reshape(-1, 1)
+    # argument parser instance
+    parser = argparse.ArgumentParser()
+    # init log level argument
+    parser.add_argument('--log', type=str,
+                        help='<optionalLog Level (info | debug)')
+    # parse arguments
+    argv = parser.parse_args()
+    # get log level
+    _level = argv.log or ''
 
-A = X_train - mean_face
+    logger = logging.getLogger('app_b')
 
-S = (1 / N) * np.dot(A.T, A)
+    if _level.upper() == 'INFO':
+        coloredlogs.install(level='IFNO', logger=logger)
+    elif _level.upper() == 'DEBUG':
+        coloredlogs.install(level='DEBUG', logger=logger)
+    else:
+        coloredlogs.install(level='WARNING', logger=logger)
 
-# Calculate eigenvalues `l` and eigenvectors `v`
-_l, _v = np.linalg.eig(S)
+    logger.info('Fetching data...')
+    data = fetch_data()
 
-# Indexes of eigenvalues, sorted by value
-_indexes = np.argsort(_l)[::-1]
+    X_train, y_train = data['train']
 
-# TODO
-# threshold w's
+    D, N = X_train.shape
+    logger.debug('Number of features: D=%d' % D)
+    logger.debug('Number of train data: N=%d' % N)
 
-# Sorted eigenvalues and eigenvectors
-l = _l[_indexes]
-v = _v[:, _indexes]
+    # mean face
+    mean_face = X_train.mean(axis=1).reshape(-1, 1)
 
-M = 250
+    A = X_train - mean_face
+    logger.debug('A.shape=%s' % (A.shape,))
 
-V = v[:, :M]
+    S = (1 / N) * np.dot(A.T, A)
+    logger.debug('S.shape=%s' % (S.shape,))
 
-_U = np.dot(A, V)
+    # Calculate eigenvalues `w` and eigenvectors `v`
+    logger.info('Calculating eigenvalues and eigenvectors...')
+    _l, _v = np.linalg.eig(S)
 
-U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
+    # Indexes of eigenvalues, sorted by value
+    logger.info('Sorting eigenvalues...')
+    _indexes = np.argsort(_l)[::-1]
 
-W = np.dot(U.T, A)
+    # TODO
+    # threshold w's
+    logger.warning('TODO: threshold eigenvalues')
 
-# train loop
+    # Sorted eigenvalues and eigenvectors
+    l = _l[_indexes]
+    logger.debug('l.shape=%s' % (l.shape,))
+    v = _v[:, _indexes]
+    logger.debug('v.shape=%s' % (v.shape,))
 
-# test loop
+    Ms = np.arange(1, len(l))
 
-X_test, y_test = data['test']
+    acc = []
+    train_dur = []
+    test_dur = []
 
-error = 0
+    logger.info('Model Evaluation for M in [%d,%d]...' % (Ms[0], Ms[-1]))
+    for j, M in enumerate(Ms):
 
-sz = X_test.shape[1]
+        progress(j + 1, len(Ms), status='Model for M=%d' % M)
 
-for i in range(sz):
+        # start timer
+        _start = time.time()
 
-    progress(i, sz, status='Testing the %dth datapoint.' % i)
+        if _level.upper() == 'DEBUG':
+            print('')
+        logger.debug('M=%s' % M)
 
-    x = X_test[:, i].reshape(-1, 1)
+        V = v[:, :M]
+        logger.debug('V.shape=%s' % (V.shape,))
 
-    phi = (x - mean_face)
+        _U = np.dot(A, V)
 
-    w = np.dot(phi.T, U)
+        U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
+        logger.debug('U.shape=%s' % (U.shape,))
 
-    E = np.mean((W - w.T)**2, axis=0)
+        W = np.dot(U.T, A)
+        logger.debug('W.shape=%s' % (W.shape,))
 
-    index = np.argmin(E)
+        # stop timer
+        _stop = time.time()
 
-    pred = y_train[:, index]
-    targ = y_test[:, i]
+        # train time
+        train_dur.append(_stop - _start)
 
-    if pred != targ:
-        error += 1
+        X_test, y_test = data['test']
+        I, K = X_test.shape
+        assert I == D, logger.error(
+            'Number of features of test and train data do not match!')
+        logger.debug('Number of features: D=%d' % I)
+        logger.debug('Number of test data: K=%d' % K)
 
-print('')
-print(error / sz)
+        accuracy = 0
+
+        # start timer
+        _start = time.time()
+
+        Phi = X_test - mean_face
+        logger.debug('Phi.shape=%s' % (Phi.shape,))
+
+        W_test = np.dot(U.T, Phi)
+        logger.debug('W_test.shape=%s' % (W_test.shape,))
+
+        y_hat = []
+
+        for j in range(K):
+
+            x = X_test[:, j].reshape(-1, 1)
+
+            phi = (x - mean_face)
+
+            w = np.dot(phi.T, U)
+
+            E = np.mean((W - w.T)**2, axis=0)
+
+            index = np.argmin(E)
+
+            pred = y_train[:, index]
+            targ = y_test[:, j]
+
+            if pred == targ:
+                accuracy += 1
+
+        #y_hat = np.array(y_hat)
+        print(accuracy)
+        accuracy = accuracy * 100 / K
+
+        # stop timer
+        _stop = time.time()
+
+        # test time
+        test_dur.append(_stop - _start)
+
+        # TODO
+        # fix bug of progress bar after '\r'
+        acc.append(accuracy)
+
+    if _level.upper() == 'INFO':
+        print('')
+    logger.info('Plotting recognition accuracy versus M...')
+    plt.plot(Ms, acc)
+    plt.title('Recognition Accuracy versus M\n')
+    plt.xlabel('M: number of principle components')
+    plt.ylabel('Recognition Accuracy [%]')
+    plt.savefig('data/out/accuracy_versus_M.pdf',
+                format='pdf', dpi=1000, transparent=True)
+    logger.info('Exported at data/out/accuracy_versus_M.pdf...')
+
+    logger.info('Plotting time versus M...')
+    plt.figure()
+    # plt.plot(Ms, train_dur)
+    sns.regplot(x=Ms.reshape(-1, 1), y=np.array(train_dur))
+    # plt.plot(Ms, test_dur)
+    sns.regplot(x=Ms.reshape(-1, 1), y=np.array(test_dur))
+    plt.title('Execution Time versus M\n')
+    plt.xlabel('M: number of principle components')
+    plt.ylabel('Execution Time [sec]')
+    plt.legend(['Train', 'Test'])
+    plt.savefig('data/out/time_versus_M.pdf',
+                format='pdf', dpi=1000, transparent=True)
+    logger.info(
+        'Exported at data/out/time_versus_M.pdf...')
