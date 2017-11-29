@@ -66,7 +66,7 @@ sz = X_test.shape[1]
 
 for i in range(sz):
 
-    progress(i, sz, status='Testing the %dth datapoint' % i)
+    progress(i, sz, status='Testing the %dth datapoint.' % i)
 
     x = X_test[:, i].reshape(-1, 1)
 
@@ -84,4 +84,5 @@ for i in range(sz):
     if pred != targ:
         error += 1
 
+print('')
 print(error / sz)

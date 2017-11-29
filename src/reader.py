@@ -36,7 +36,7 @@ def fetch_data(fname='face', ratio=0.8):
 
     assert(_X.shape[1] == _y.shape[1])
     # Number of images
-    N = _X.shape[1]
+    D, N = _X.shape
 
     # Fix the random seed
     np.random.seed(0)

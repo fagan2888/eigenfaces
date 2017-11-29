@@ -1,5 +1,7 @@
 # scientific computing library
 import numpy as np
+from sklearn.svm import SVC
+from sklearn.model_selection import GridSearchCV
 
 # visualization tools
 import matplotlib.pyplot as plt
@@ -44,27 +46,14 @@ _indexes = np.argsort(_l)[::-1]
 l = _l[_indexes]
 v = _v[:, _indexes]
 
-M = np.arange(1, N)
+M = 20
 
-error = []
+V = v[:, :M]
 
-for j, m in enumerate(M):
+_U = np.dot(A, V)
 
-    progress(j, len(M), status='Reconstruction for M=%d, out of %d.' %
-             (m, len(M)))
+U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
 
-    V = v[:, :m]
+W = np.dot(U.T, A)
 
-    _U = np.dot(A, V)
-
-    U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
-
-    W = np.dot(U.T, A)
-
-    A_hat = np.dot(U, W)
-
-    error.append(np.mean(np.sum((A - A_hat)**2)))
-
-plt.plot(M, error)
-
-plt.show()
+classifier = SVC(kernel='linear')

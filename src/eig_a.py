@@ -24,8 +24,10 @@ D, N = X_train.shape
 # mean face
 mean_face = X_train.mean(axis=1).reshape(-1, 1)
 
-plt.imshow(mean_face.reshape(SHAPE).T)
-plt.savefig('data/out/mean_face_q1a.eps', format='eps', dpi=1000)
+plt.imshow(mean_face.reshape(SHAPE).T,
+           cmap=plt.get_cmap('gray'), vmin=0, vmax=255)
+plt.savefig('data/out/mean_face_eig_a.pdf',
+            format='pdf', dpi=1000, transparent=True)
 
 A = X_train - mean_face
 
@@ -44,5 +46,8 @@ _indexes = np.argsort(np.abs(_w))
 w = _w[_indexes]
 v = _v[:, _indexes]
 
+plt.figure()
+
 plt.bar(range(len(w)), np.abs(w[::-1]))
-plt.savefig('data/out/eigenvalues_q1a.eps', format='eps', dpi=1000)
+plt.savefig('data/out/eigenvalues_eig_a.pdf',
+            format='pdf', dpi=1000, transparent=True)
