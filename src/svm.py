@@ -7,18 +7,20 @@ import numpy as np
 from sklearn.svm import SVC
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import confusion_matrix
 
 # visualization tools
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 # prettify plots
-plt.rcParams['figure.figsize'] = [20.0, 15.0]
+plt.rcParams['figure.figsize'] = [32.0, 24.0]
 sns.set_palette(sns.color_palette("muted"))
 sns.set_style("ticks")
 
 # helper data preprocessor
 from reader import fetch_data
+from pca import PCA
 
 # utility functions
 from utils import progress
@@ -32,6 +34,44 @@ import argparse
 
 # time module
 import time
+
+import itertools
+
+
+def plot_confusion_matrix(cm, classes,
+                          normalize=False,
+                          title='Confusion matrix',
+                          cmap=plt.cm.Blues):
+    """
+    This function prints and plots the confusion matrix.
+    Normalization can be applied by setting `normalize=True`.
+    """
+    if normalize:
+        cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+        print("Normalized confusion matrix")
+    else:
+        print('Confusion matrix, without normalization')
+
+    print(cm)
+
+    plt.imshow(cm, interpolation='nearest', cmap=cmap)
+    plt.title(title)
+    plt.colorbar()
+    tick_marks = np.arange(len(classes))
+    plt.xticks(tick_marks, classes, rotation=45)
+    plt.yticks(tick_marks, classes)
+
+    fmt = '.2f' if normalize else 'd'
+    thresh = cm.max() / 2.
+    for i, j in itertools.product(range(cm.shape[0]), range(cm.shape[1])):
+        plt.text(j, i, format(cm[i, j], fmt),
+                 horizontalalignment="center",
+                 color="white" if cm[i, j] > thresh else "black")
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+
 
 if __name__ == '__main__':
 
@@ -60,82 +100,30 @@ if __name__ == '__main__':
     X_train, y_train = data['train']
 
     D, N = X_train.shape
-    logger.debug('Number of features: D=%d' % D)
-    logger.debug('Number of train data: N=%d' % N)
 
-    # mean face
-    mean_face = X_train.mean(axis=1).reshape(-1, 1)
+    M = 100
 
-    A = X_train - mean_face
-    logger.debug('A.shape=%s' % (A.shape,))
+    pca = PCA(n_comps=M, logger=logger)
 
-    S = (1 / N) * np.dot(A.T, A)
-    logger.debug('S.shape=%s' % (S.shape,))
-
-    # Calculate eigenvalues `w` and eigenvectors `v`
-    logger.info('Calculating eigenvalues and eigenvectors...')
-    _l, _v = np.linalg.eig(S)
-
-    # Indexes of eigenvalues, sorted by value
-    logger.info('Sorting eigenvalues...')
-    _indexes = np.argsort(_l)[::-1]
-
-    # TODO
-    # threshold w's
-    logger.warning('TODO: threshold eigenvalues')
-
-    # Sorted eigenvalues and eigenvectors
-    l = _l[_indexes]
-    logger.debug('l.shape=%s' % (l.shape,))
-    v = _v[:, _indexes]
-    logger.debug('v.shape=%s' % (v.shape,))
-
-    M = 2
-
-    V = v[:, :M]
-    logger.debug('V.shape=%s' % (V.shape,))
-
-    _U = np.dot(A, V)
-
-    U = _U / np.apply_along_axis(np.linalg.norm, 0, _U)
-    logger.debug('U.shape=%s' % (U.shape,))
-
-    W = np.dot(U.T, A)
-    logger.debug('W.shape=%s' % (W.shape,))
+    W_train = pca.fit(X_train)
+    logger.debug('W_train.shape=%s' % (W_train.shape,))
 
     X_test, y_test = data['test']
     I, K = X_test.shape
     assert I == D, logger.error(
         'Number of features of test and train data do not match!')
-    logger.debug('Number of features: D=%d' % I)
-    logger.debug('Number of test data: K=%d' % K)
 
-    Phi = X_test - mean_face
-    logger.debug('Phi.shape=%s' % (Phi.shape,))
-
-    W_test = np.dot(U.T, Phi)
+    W_test = pca.transform(X_test)
     logger.debug('W_test.shape=%s' % (W_test.shape,))
 
     classes = set(y_train.ravel())
 
-    accs = []
+    #_params = {'kernel': ['linear'], 'C': [10]}
 
-    classifiers = []
+    yo = []
 
-    classifier = SVC(kernel='linear', C=1e1,
-                     decision_function_shape='ovo')
+    for c in classes:
 
-    classifier.fit(W.T, y_train.ravel())
-
-    y_hat = classifier.predict(W_test.T)
-
-    print(np.sum(y_hat == y_test.ravel()) / K)
-
-
-"""
-    _params = {'C': np.logspace(-3, 0, 10)}
-
-    for c in list(classes):
         # preprocess training labels
         l_train = -np.ones(y_train.T.shape)
         l_train[y_train.T == c] = 1
@@ -143,59 +131,45 @@ if __name__ == '__main__':
         l_test = -np.ones(y_test.T.shape)
         l_test[y_test.T == c] = 1
 
-        search = GridSearchCV(SVC(kernel='linear', probability=True),
-                              param_grid=_params, cv=3, n_jobs=-1)
+        # search.best_estimator_
+        classifier = SVC(kernel='linear', C=10, probability=True)
 
-        search.fit(W.T, l_train.ravel())
+        classifier.fit(W_train.T, l_train.ravel())
 
-        # SVC(kernel='linear', C=10000, probability=True)
-        classifier = search.best_estimator_
-
-        print(search.best_params_)
-
-        #classifier.fit(W.T, l_train.ravel())
-
-        classifiers.append(classifier)
-
-        y_hat_train = classifier.predict(W.T)
+        y_hat_train = classifier.predict(W_train.T)
 
         acc_train = np.sum(l_train.ravel() == y_hat_train) / N
-        # print(acc_train)
-        # print(search.best_params_['gamma'])
-        assert acc_train == 1.0  # , search.best_params_
+        assert acc_train == 1.0
 
-        scores = classifier.predict(W_test.T)
+        scores = classifier.predict_proba(W_test.T)
+
+        yo.append(scores[:, 1])
 
         acc_test = np.sum(l_test.ravel() == scores) / K
-        # print(acc_test)
 
-    truuuuues = 0
+    yo = np.array(yo)
 
-    DIFFS = 0
+    trues = np.argmax(yo, axis=0)
 
-    for j in range(W_test.T.shape[0]):
+    y_hat = np.array(
+        list(map(lambda x: list(classes)[x], trues))).reshape(1, -1)
 
-        w_test = W_test.T[j]
-        l_test = y_test.T[j]
+    acc = np.sum(y_test == y_hat) / K
 
-        probs = []
+    print(acc * 100)
 
-        for c in range(len(classifiers)):
+    a = y_test.ravel()
+    b = y_hat.ravel()
 
-            pred = classifiers[c].predict_proba(w_test.reshape(1, -1))
-            probs.append(pred[:, 1])
+    cnf_matrix = confusion_matrix(a, b, labels=list(classes))
 
-        probs = np.array(probs)
-
-        true_index = np.argmax(probs)
-
-        if true_index != 4 and list(classes)[true_index] != 5:
-
-            DIFFS += 1
-
-        if l_test == list(classes)[true_index]:
-
-            truuuuues += 1
-
-    print(truuuuues / K)
-"""
+    # Plot non-normalized confusion matrix
+    plt.figure()
+    plot_confusion_matrix(cnf_matrix, classes=classes,
+                          title='Confusion matrix, without normalization')
+    plt.savefig('data/out/cnf_matrix.pdf', format='pdf', dpi=300)
+    # Plot normalized confusion matrix
+    plt.figure()
+    plot_confusion_matrix(cnf_matrix, classes=classes, normalize=True,
+                          title='Normalized confusion matrix')
+    plt.savefig('data/out/cnf_matrix_norm.pdf', format='pdf', dpi=300)
