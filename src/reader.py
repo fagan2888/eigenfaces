@@ -3,6 +3,8 @@ import numpy as np
 # `.mat` to `Python`-compatible data converter
 import scipy.io
 
+from sklearn.model_selection import train_test_split
+
 
 def fetch_data(fname='face', ratio=0.8):
     """Bootstrapping helper function for fetching data.
@@ -38,19 +40,22 @@ def fetch_data(fname='face', ratio=0.8):
     # Number of images
     D, N = _X.shape
 
-    # Fix the random seed
-    np.random.seed(13)
+    X_train, X_test, y_train, y_test = train_test_split(
+        _X.T, _y.T, test_size=0.2, random_state=11)
 
-    # Shuffled indeces
-    _mask = np.arange(N)
-    np.random.shuffle(_mask)
+    # # Fix the random seed
+    # np.random.seed(11)
 
-    # Randomised data
-    X = _X[:, _mask]
-    y = _y[:, _mask]
+    # # Shuffled indeces
+    # _mask = np.arange(N)
+    # np.random.shuffle(_mask)
 
-    # Ratition dataset to train and test sets
-    X_train, X_test = X[:, :int(N * ratio)], X[:, int(N * ratio):]
-    y_train, y_test = y[:, :int(N * ratio)], y[:, int(N * ratio):]
+    # # Randomised data
+    # X = _X[:, _mask]
+    # y = _y[:, _mask]
 
-    return {'train': (X_train, y_train), 'test': (X_test, y_test)}
+    # # Ratition dataset to train and test sets
+    # X_train, X_test = X[:, :int(N * ratio)], X[:, int(N * ratio):]
+    # y_train, y_test = y[:, :int(N * ratio)], y[:, int(N * ratio):]
+
+    return {'train': (X_train.T, y_train.T), 'test': (X_test.T, y_test.T)}

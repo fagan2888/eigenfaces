@@ -101,7 +101,7 @@ if __name__ == '__main__':
 
     D, N = X_train.shape
 
-    M = 100
+    M = N
 
     pca = PCA(n_comps=M, logger=logger)
 
@@ -132,7 +132,8 @@ if __name__ == '__main__':
         l_test[y_test.T == c] = 1
 
         # search.best_estimator_
-        classifier = SVC(kernel='linear', C=10, probability=True)
+
+        classifier = SVC(kernel='linear', C=100, probability=True, )
 
         classifier.fit(W_train.T, l_train.ravel())
 
