@@ -3,10 +3,8 @@ import numpy as np
 # `.mat` to `Python`-compatible data converter
 import scipy.io
 
-from sklearn.model_selection import train_test_split
 
-
-def fetch_data(fname='face', ratio=0.8):
+def fetch_data(fname='face', ratio=0.8, seed=13):
     """Bootstrapping helper function for fetching data.
 
     Parameters
@@ -15,6 +13,8 @@ def fetch_data(fname='face', ratio=0.8):
         Name of the `.mat` input file
     ratio: float
         Split ratio of dataset
+    seed: int
+        Random seed initial state
 
     Returns
     -------
@@ -33,29 +33,42 @@ def fetch_data(fname='face', ratio=0.8):
     # Images
     # N: number of images
     # D: number of pixels
-    _X = data['X']  # shape: [D x N]
-    _y = data['l']  # shape: [1 x N]
+    X = data['X']  # shape: [D x N]
+    y = data['l']  # shape: [1 x N]
 
-    assert(_X.shape[1] == _y.shape[1])
+    assert(X.shape[1] == y.shape[1])
     # Number of images
-    D, N = _X.shape
+    D, N = X.shape
 
-    X_train, X_test, y_train, y_test = train_test_split(
-        _X.T, _y.T, test_size=0.2, random_state=11)
+    # Fix the random seed
+    np.random.seed(seed)
 
-    # # Fix the random seed
-    # np.random.seed(11)
+    # Cardinality of labels
+    _card = len(set(y.ravel()))
 
-    # # Shuffled indeces
-    # _mask = np.arange(N)
-    # np.random.shuffle(_mask)
+    # Step splitting of dataset
+    _step = int(N / _card)
 
-    # # Randomised data
-    # X = _X[:, _mask]
-    # y = _y[:, _mask]
+    # Shape boundaries
+    _bounds = np.arange(0, N, _step)
 
-    # # Ratition dataset to train and test sets
-    # X_train, X_test = X[:, :int(N * ratio)], X[:, int(N * ratio):]
-    # y_train, y_test = y[:, :int(N * ratio)], y[:, int(N * ratio):]
+    # Shapes
+    shapes = list(zip(_bounds[:-1], _bounds[1:]))
 
-    return {'train': (X_train.T, y_train.T), 'test': (X_test.T, y_test.T)}
+    # Training Mask
+    _mask = []
+
+    for _shape in shapes:
+        _idx = np.random.choice(
+            np.arange(*_shape), int(ratio * _step), replace=False)
+        _mask.append(_idx)
+
+    mask_train = np.array(_mask).ravel()
+
+    mask_test = np.array(list(set(np.arange(0, N)) - set(mask_train)))
+
+    # Partition dataset to train and test sets
+    X_train, X_test = X[:, mask_train], X[:, mask_test]
+    y_train, y_test = y[:, mask_train], y[:, mask_test]
+
+    return {'train': (X_train, y_train), 'test': (X_test, y_test)}
