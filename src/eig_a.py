@@ -9,9 +9,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-#timing utility
-import time
-
 # prettify plots
 plt.rcParams['figure.figsize'] = [20.0, 15.0]
 sns.set_palette(sns.color_palette("muted"))
@@ -27,6 +24,10 @@ import coloredlogs
 # argument parser
 import argparse
 
+# built-in tools
+import time
+import os
+
 SHAPE = (46, 56)
 
 if __name__ == '__main__':
@@ -34,14 +35,14 @@ if __name__ == '__main__':
     # argument parser instance
     parser = argparse.ArgumentParser()
     # init log level argument
-    parser.add_argument('--log', type=str,
-                        help='<optionalLog Level (info | debug)')
+    parser.add_argument('-l', '--log', type=str,
+                        help='<optional> Log Level (info | debug)')
     # parse arguments
     argv = parser.parse_args()
     # get log level
     _level = argv.log or ''
 
-    logger = logging.getLogger('app_a')
+    logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
 
     if _level.upper() == 'INFO':
         coloredlogs.install(level='IFNO', logger=logger)

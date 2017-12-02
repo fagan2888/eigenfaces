@@ -5,7 +5,7 @@ import numpy as np
 class PCA(object):
     """Principle Component Analysis."""
 
-    def __init__(self, n_comps=5, logger=None):
+    def __init__(self, n_comps=5, standard=True, logger=None):
         """Contructor.
 
         Parameters
@@ -15,6 +15,7 @@ class PCA(object):
         """
         self._fitted = False
         self.n_comps = n_comps
+        self.standard = standard
         self.logger = logger
         self.mean = None
         self.U = None
@@ -71,9 +72,16 @@ class PCA(object):
 
         W = np.dot(self.U.T, A)
 
+        if self.standard:
+            self.W_mean = np.mean(W, axis=1)
+            self.W_std = np.std(W, axis=1)
+
         self._fitted = True
 
-        return W
+        if self.standard:
+            return ((W.T - self.W_mean) / self.W_std).T
+        else:
+            return W
 
     def transform(self, X):
         """Transform `X` by projecting it to PCA feature space.
@@ -99,4 +107,7 @@ class PCA(object):
         if self.logger:
             self.logger.debug('W.shape=%s' % (W.shape,))
 
-        return W
+        if self.standard:
+            return ((W.T - self.W_mean) / self.W_std).T
+        else:
+            return W

@@ -27,22 +27,25 @@ import coloredlogs
 # argument parser
 import argparse
 
-# time module
+# built-in tools
 import time
+import os
+import psutil
+
 
 if __name__ == '__main__':
 
     # argument parser instance
     parser = argparse.ArgumentParser()
     # init log level argument
-    parser.add_argument('--log', type=str,
-                        help='<optionalLog Level (info | debug)')
+    parser.add_argument('-l', '--log', type=str,
+                        help='<optional> Log Level (info | debug)')
     # parse arguments
     argv = parser.parse_args()
     # get log level
     _level = argv.log or ''
 
-    logger = logging.getLogger('app_b')
+    logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
 
     if _level.upper() == 'INFO':
         coloredlogs.install(level='IFNO', logger=logger)
@@ -92,6 +95,7 @@ if __name__ == '__main__':
     acc = []
     train_dur = []
     test_dur = []
+    memory = []
 
     logger.info('Model Evaluation for M in [%d,%d]...' % (Ms[0], Ms[-1]))
     for j, M in enumerate(Ms):
@@ -160,8 +164,6 @@ if __name__ == '__main__':
             if pred == targ:
                 accuracy += 1
 
-        #y_hat = np.array(y_hat)
-        print(accuracy)
         accuracy = accuracy * 100 / K
 
         # stop timer
@@ -169,6 +171,9 @@ if __name__ == '__main__':
 
         # test time
         test_dur.append(_stop - _start)
+
+        # pct memory usage
+        memory.append(psutil.Process(os.getpid()).memory_percent())
 
         # TODO
         # fix bug of progress bar after '\r'
@@ -199,3 +204,15 @@ if __name__ == '__main__':
                 format='pdf', dpi=1000, transparent=True)
     logger.info(
         'Exported at data/out/time_versus_M.pdf...')
+
+    logger.info('Plotting memory versus M...')
+    plt.figure()
+    plt.plot(Ms, memory)
+    #sns.regplot(x=Ms.reshape(-1, 1), y=np.array(memory))
+    plt.title('Memory Percentage Usage versus M\n')
+    plt.xlabel('M: number of principle components')
+    plt.ylabel('Memory Usage [%]')
+    plt.savefig('data/out/memory_versus_M.pdf',
+                format='pdf', dpi=1000, transparent=True)
+    logger.info(
+        'Exported at data/out/memory_versus_M.pdf...')
