@@ -4,7 +4,7 @@ import numpy as np
 import scipy.io
 
 
-def fetch_data(fname='face', ratio=0.8, seed=42):
+def fetch_data(fname='face', ratio=0.8, seed=13):
     """Bootstrapping helper function for fetching data.
 
     Parameters
@@ -71,4 +71,4 @@ def fetch_data(fname='face', ratio=0.8, seed=42):
     X_train, X_test = X[:, mask_train], X[:, mask_test]
     y_train, y_test = y[:, mask_train], y[:, mask_test]
 
-    return {'train': (X_train.T, y_train.T), 'test': (X_test.T, y_test.T)}
+    return {'train': (X_train, y_train), 'test': (X_test, y_test)}
