@@ -9,6 +9,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+#timing utility
+import time
+
 # prettify plots
 plt.rcParams['figure.figsize'] = [20.0, 15.0]
 sns.set_palette(sns.color_palette("muted"))
@@ -74,7 +77,10 @@ if __name__ == '__main__':
 
     # Calculate eigenvalues `w` and eigenvectors `v`
     logger.info('Calculating eigenvalues and eigenvectors...')
+
+    t = time.process_time()
     _w, _v = np.linalg.eig(S)
+    print(time.process_time() - t)
 
     # Indexes of eigenvalues, sorted by value
     logger.info('Sorting eigenvalues...')
