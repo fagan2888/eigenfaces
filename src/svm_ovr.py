@@ -76,6 +76,7 @@ if __name__ == '__main__':
     D, N = X_train.shape
 
     pca = PCA(n_comps=M, standard=standard, logger=logger)
+    logger.info('Applying PCA with M=%d' % M)
 
     W_train = pca.fit(X_train)
     logger.debug('W_train.shape=%s' % (W_train.shape,))

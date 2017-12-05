@@ -4,18 +4,20 @@ matplotlib.use('Agg')
 
 # scientific computing library
 import numpy as np
+from sklearn.metrics import confusion_matrix
 
 # visualization tools
 import matplotlib.pyplot as plt
 import seaborn as sns
 
 # prettify plots
-plt.rcParams['figure.figsize'] = [20.0, 15.0]
+plt.rcParams['figure.figsize'] = [8.0, 6.0]
 sns.set_palette(sns.color_palette("muted"))
 sns.set_style("ticks")
 
 # helper data preprocessor
 from reader import fetch_data
+from visualize import plot_confusion_matrix
 
 # utility functions
 from utils import progress
@@ -90,12 +92,17 @@ if __name__ == '__main__':
     v = _v[:, _indexes]
     logger.debug('v.shape=%s' % (v.shape,))
 
+    classes = set(y_train.ravel())
+
     Ms = np.arange(1, len(l))
+    # value of M for confusion matrix
+    M_star = Ms[-1]
 
     acc = []
     train_dur = []
     test_dur = []
     memory = []
+    conf_mat = []
 
     logger.info('Model Evaluation for M in [%d,%d]...' % (Ms[0], Ms[-1]))
     for j, M in enumerate(Ms):
@@ -144,8 +151,6 @@ if __name__ == '__main__':
         W_test = np.dot(U.T, Phi)
         logger.debug('W_test.shape=%s' % (W_test.shape,))
 
-        y_hat = []
-
         for j in range(K):
 
             x = X_test[:, j].reshape(-1, 1)
@@ -163,6 +168,10 @@ if __name__ == '__main__':
 
             if pred == targ:
                 accuracy += 1
+
+            # store values for confusion matrix
+            if M == M_star:
+                conf_mat.append((pred, targ))
 
         accuracy = accuracy * 100 / K
 
@@ -183,8 +192,8 @@ if __name__ == '__main__':
         print('')
     logger.info('Plotting recognition accuracy versus M...')
     plt.plot(Ms, acc)
-    plt.title('Recognition Accuracy versus M\n')
-    plt.xlabel('M: number of principle components')
+    plt.title('Recognition Accuracy versus $\mathcal{M}$\n')
+    plt.xlabel('$\mathcal{M}$: number of principle components')
     plt.ylabel('Recognition Accuracy [%]')
     plt.savefig('data/out/accuracy_versus_M.pdf',
                 format='pdf', dpi=1000, transparent=True)
@@ -196,8 +205,8 @@ if __name__ == '__main__':
     sns.regplot(x=Ms.reshape(-1, 1), y=np.array(train_dur))
     # plt.plot(Ms, test_dur)
     sns.regplot(x=Ms.reshape(-1, 1), y=np.array(test_dur))
-    plt.title('Execution Time versus M\n')
-    plt.xlabel('M: number of principle components')
+    plt.title('Execution Time versus $\mathcal{M}$\n')
+    plt.xlabel('$\mathcal{M}$: number of principle components')
     plt.ylabel('Execution Time [sec]')
     plt.legend(['Train', 'Test'])
     plt.savefig('data/out/time_versus_M.pdf',
@@ -209,10 +218,33 @@ if __name__ == '__main__':
     plt.figure()
     plt.plot(Ms, memory)
     #sns.regplot(x=Ms.reshape(-1, 1), y=np.array(memory))
-    plt.title('Memory Percentage Usage versus M\n')
-    plt.xlabel('M: number of principle components')
+    plt.title('Memory Percentage Usage versus $\mathcal{M}$\n')
+    plt.xlabel('$\mathcal{M}$: number of principle components')
     plt.ylabel('Memory Usage [%]')
     plt.savefig('data/out/memory_versus_M.pdf',
                 format='pdf', dpi=1000, transparent=True)
     logger.info(
         'Exported at data/out/memory_versus_M.pdf...')
+
+    y_test, y_hat = zip(*conf_mat)
+
+    cnf_matrix = confusion_matrix(
+        y_test, y_hat, labels=list(classes))
+
+    plt.rcParams['figure.figsize'] = [24.0, 18.0]
+
+    # Plot non-normalized confusion matrix
+    plt.figure()
+    logger.info('Plotting confusion matrices...')
+    plot_confusion_matrix(cnf_matrix, classes=classes,
+                          title='Nearest Neighbor - Confusion Matrix',
+                          cmap=plt.cm.Greens)
+    plt.savefig('data/out/nn_cnf_matrix.pdf', format='pdf', dpi=300)
+    # Plot normalized confusion matrix
+    plt.figure()
+    plot_confusion_matrix(cnf_matrix, classes=classes, normalize=True,
+                          title='Nearest Neighbor - Normalized Confusion Matrix',
+                          cmap=plt.cm.Greens)
+    plt.savefig('data/out/nn_cnf_matrix_norm.pdf', format='pdf', dpi=300)
+    logger.info(
+        'Exported at data/out/nn_cnf_matrix.pdf & data/out/nn_cnf_matrix_norm.pdf...')

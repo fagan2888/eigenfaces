@@ -23,7 +23,7 @@ def plot_confusion_matrix(cm, classes,
         cm = cm.astype('float') / (cm.sum(axis=1)[:, np.newaxis] + 1e-6)
 
     plt.imshow(cm, interpolation='nearest', cmap=cmap)
-    plt.title(title + '\n')
+    plt.title(title + '\n', fontsize=25)
     plt.colorbar()
     tick_marks = np.arange(len(classes))
     plt.xticks(tick_marks, classes, rotation=45)
@@ -36,6 +36,6 @@ def plot_confusion_matrix(cm, classes,
                  horizontalalignment="center",
                  color="white" if cm[i, j] > thresh else "black")
 
+    plt.ylabel('True Label', fontsize=25)
+    plt.xlabel('Predicted Label', fontsize=25)
     plt.tight_layout()
-    plt.ylabel('True Label')
-    plt.xlabel('Predicted Label\n')
