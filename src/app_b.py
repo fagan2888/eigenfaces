@@ -188,6 +188,8 @@ if __name__ == '__main__':
         # fix bug of progress bar after '\r'
         acc.append(accuracy)
 
+    print(acc[-1])
+
     if _level.upper() == 'INFO':
         print('')
     logger.info('Plotting recognition accuracy versus M...')
@@ -231,7 +233,7 @@ if __name__ == '__main__':
     cnf_matrix = confusion_matrix(
         y_test, y_hat, labels=list(classes))
 
-    plt.rcParams['figure.figsize'] = [24.0, 18.0]
+    plt.rcParams['figure.figsize'] = [28.0, 21.0]
 
     # Plot non-normalized confusion matrix
     plt.figure()

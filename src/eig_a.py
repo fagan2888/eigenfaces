@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 # prettify plots
-plt.rcParams['figure.figsize'] = [20.0, 15.0]
+plt.rcParams['figure.figsize'] = [12.0, 9.0]
 sns.set_palette(sns.color_palette("muted"))
 sns.set_style("ticks")
 
@@ -65,7 +65,8 @@ if __name__ == '__main__':
 
     logger.info('Plotting mean face...')
     plt.imshow(mean_face.reshape(SHAPE).T,
-               cmap=plt.get_cmap('gray'), vmin=0, vmax=255)
+               cmap=plt.cm.Greys)
+    plt.title('Mean Face\n')
     plt.savefig('data/out/mean_face_eig_a.pdf',
                 format='pdf', dpi=1000, transparent=True)
     logger.info('Exported at data/out/mean_face_eig_a.pdf...')
@@ -80,12 +81,12 @@ if __name__ == '__main__':
     logger.info('Calculating eigenvalues and eigenvectors...')
 
     t = time.process_time()
-    _w, _v = np.linalg.eig(S)
+    _w, _u = np.linalg.eig(S)
     print(time.process_time() - t)
 
     # Indexes of eigenvalues, sorted by value
     logger.info('Sorting eigenvalues...')
-    _indexes = np.argsort(np.abs(_w))
+    _indexes = np.argsort(np.abs(_w))[::-1]
 
     # TODO
     # threshold w's
@@ -94,13 +95,24 @@ if __name__ == '__main__':
     # Sorted eigenvalues and eigenvectors
     w = _w[_indexes]
     logger.debug('w.shape=%s' % (w.shape,))
-    v = _v[:, _indexes]
-    logger.debug('v.shape=%s' % (v.shape,))
+    u = np.real(_u[:, _indexes])
+    logger.debug('u.shape=%s' % (u.shape,))
 
     plt.figure()
 
     logger.info('Plotting sorted eigenvalues...')
-    plt.bar(range(len(w)), np.abs(w[::-1]))
+    plt.bar(range(len(w)), np.abs(w))
     plt.savefig('data/out/eigenvalues_eig_a.pdf',
                 format='pdf', dpi=1000, transparent=True)
     logger.info('Exported at data/out/eigenvalues_eig_a.pdf...')
+
+    logger.info('Plotting eigenfaces...')
+    n_images = 6
+    fig, axes = plt.subplots(nrows=2, ncols=int(n_images / 2))
+    for ax, img, i in zip(axes.flatten(), u[:, :n_images].T, range(1, n_images + 1)):
+        ax.imshow(img.reshape(SHAPE).T,
+                  cmap=plt.cm.Greys)
+        ax.set_title('Eigenface %d' % i)
+    fig.savefig('data/out/naive_eigenfaces.pdf',
+                format='pdf', dpi=1000, transparent=True)
+    logger.info('Exported at data/out/naive_eigenfaces.pdf...')
