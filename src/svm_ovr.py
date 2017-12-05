@@ -39,6 +39,10 @@ import argparse
 import time
 import os
 
+import pdb
+from functools import reduce
+np.warnings.filterwarnings('ignore')
+
 if __name__ == '__main__':
 
     # argument parser instance
@@ -50,6 +54,8 @@ if __name__ == '__main__':
                         help='<optional> Number of principle components')
     parser.add_argument('-s', '--standard', action='store_true',
                         help='<optional> Standardize data')
+    parser.add_argument('-cv', '--cross_validation', action='store_true',
+                        help='<optional> Cross validate SVM')
     # parse arguments
     argv = parser.parse_args()
     # get log level
@@ -58,6 +64,8 @@ if __name__ == '__main__':
     M = argv.n_comps or 50
     # get flag of standardization
     standard = argv.standard or False
+    # get flag of cross validation
+    cv = argv.cross_validation or False
 
     logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
 
@@ -93,6 +101,13 @@ if __name__ == '__main__':
 
     scores = []
 
+    if cv:
+        # cross validation grid
+        params = {'gamma': np.logspace(-5, 3, 5), 'kernel': ['rbf', 'linear']}
+
+        mean_fit_time = {k: 0 for k in params['kernel']}
+        mean_score_time = {k: 0 for k in params['kernel']}
+
     for c in classes:
 
         # preprocess training labels
@@ -102,11 +117,34 @@ if __name__ == '__main__':
         l_test = -np.ones(y_test.T.shape)
         l_test[y_test.T == c] = 1
 
-        # search.best_estimator_
+        _classifier = SVC(kernel='linear', C=10, probability=True, gamma=2e-4)
 
-        classifier = SVC(kernel='linear', C=10, probability=True, gamma=2e-4)
+        if cv:
+            search = GridSearchCV(_classifier, params)
 
-        classifier.fit(W_train.T, l_train.ravel())
+            search.fit(W_train.T, l_train.ravel())
+
+            classifier = search.best_estimator_
+
+            _results = list(zip(search.cv_results_['params'],
+                                search.cv_results_['mean_fit_time'],
+                                search.cv_results_['mean_score_time']))
+
+            pdb.set_trace()
+
+            for kernel in params['kernel']:
+                _f = filter(lambda x: kernel == x[0]['kernel'], _results)
+                for _, fit_time, score_time in _f:
+                    mean_fit_time[kernel] += fit_time
+                    mean_score_time[kernel] += score_time
+                mean_fit_time[kernel] /= len(search.cv_results_['params']
+                                             ) / len(params['kernel'])
+                mean_score_time[kernel] /= len(search.cv_results_['params']
+                                               ) / len(params['kernel'])
+
+        else:
+            classifier = _classifier
+            classifier.fit(W_train.T, l_train.ravel())
 
         if classifier.kernel != 'rbf':
             y_hat_train = classifier.predict(W_train.T)
@@ -121,6 +159,8 @@ if __name__ == '__main__':
         acc_test = np.sum(l_test.ravel() == probs) / K
 
     scores = np.array(scores)
+
+    pdb.set_trace()
 
     trues = np.argmax(scores, axis=0)
 

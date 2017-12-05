@@ -52,6 +52,8 @@ if __name__ == '__main__':
                         help='<optional> Number of principle components')
     parser.add_argument('-s', '--standard', action='store_true',
                         help='<optional> Standardize data')
+    parser.add_argument('-cv', '--cross_validation', action='store_true',
+                        help='<optional> Cross validate SVM')
     # parse arguments
     argv = parser.parse_args()
     # get log level
@@ -60,6 +62,8 @@ if __name__ == '__main__':
     M = argv.n_comps or 50
     # get flag of standardization
     standard = argv.standard or False
+    # get flag of cross validation
+    cv = argv.cross_validation or False
 
     logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
 
@@ -106,7 +110,11 @@ if __name__ == '__main__':
 
     combs = itertools.combinations(classes, 2)
 
-    #_params = {'kernel': ['linear'], 'C': [10]}
+    if cv:
+        # cross validation grid
+        params = {'gamma': np.logspace(-5, 3, 5), 'kernel': ['rbf', 'linear']}
+
+        mean_fit_time = {k: 0 for k in params['kernel']}
 
     LEADERBOARD = np.zeros((C + 1, K))
 
@@ -123,9 +131,28 @@ if __name__ == '__main__':
         # select the training examples
         w_train = W_train.T[_index]
 
-        classifier = SVC(kernel='linear', C=1)
+        _classifier = SVC(kernel='linear', C=10, probability=True, gamma=2e-4)
 
-        classifier.fit(w_train, l_train)
+        if cv:
+            search = GridSearchCV(_classifier, params)
+
+            search.fit(w_train, l_train)
+
+            classifier = search.best_estimator_
+
+            _results = list(zip(search.cv_results_['params'],
+                                search.cv_results_['mean_fit_time']))
+
+            for kernel in params['kernel']:
+                _f = filter(lambda x: kernel == x[0]['kernel'], _results)
+                for _, val in _f:
+                    mean_fit_time[kernel] += val
+                mean_fit_time[kernel] /= len(search.cv_results_['params']
+                                             ) / len(params['kernel'])
+
+        else:
+            classifier = _classifier
+            classifier.fit(w_train, l_train)
 
         scores = classifier.predict(W_test.T)
 
