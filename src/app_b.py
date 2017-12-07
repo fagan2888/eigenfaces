@@ -5,6 +5,7 @@ matplotlib.use('Agg')
 # scientific computing library
 import numpy as np
 from sklearn.metrics import confusion_matrix
+from sklearn.neighbors import KNeighborsClassifier
 
 # visualization tools
 import matplotlib.pyplot as plt
@@ -42,10 +43,14 @@ if __name__ == '__main__':
     # init log level argument
     parser.add_argument('-l', '--log', type=str,
                         help='<optional> Log Level (info | debug)')
+    parser.add_argument('-k', '--n_neighbors', type=int,
+                        help='<optional> Number of nearest neighbors')
     # parse arguments
     argv = parser.parse_args()
     # get log level
     _level = argv.log or ''
+    # get number of neighbors
+    n_neighbors = argv.n_neighbors or 1
 
     logger = logging.getLogger(os.path.basename(__file__).replace('.py', ''))
 
@@ -55,6 +60,8 @@ if __name__ == '__main__':
         coloredlogs.install(level='DEBUG', logger=logger)
     else:
         coloredlogs.install(level='WARNING', logger=logger)
+
+    logger.debug('n_neighbors=%s' % n_neighbors)
 
     logger.info('Fetching data...')
     data = fetch_data()
@@ -82,10 +89,6 @@ if __name__ == '__main__':
     logger.info('Sorting eigenvalues...')
     _indexes = np.argsort(_l)[::-1]
 
-    # TODO
-    # threshold w's
-    logger.warning('TODO: threshold eigenvalues')
-
     # Sorted eigenvalues and eigenvectors
     l = _l[_indexes]
     logger.debug('l.shape=%s' % (l.shape,))
@@ -102,7 +105,6 @@ if __name__ == '__main__':
     train_dur = []
     test_dur = []
     memory = []
-    conf_mat = []
 
     logger.info('Model Evaluation for M in [%d,%d]...' % (Ms[0], Ms[-1]))
     for j, M in enumerate(Ms):
@@ -126,6 +128,9 @@ if __name__ == '__main__':
 
         W = np.dot(U.T, A)
         logger.debug('W.shape=%s' % (W.shape,))
+
+        classifier = KNeighborsClassifier(n_neighbors=n_neighbors)
+        classifier.fit(W.T, y_train.T.ravel())
 
         # stop timer
         _stop = time.time()
@@ -151,32 +156,19 @@ if __name__ == '__main__':
         W_test = np.dot(U.T, Phi)
         logger.debug('W_test.shape=%s' % (W_test.shape,))
 
-        for j in range(K):
+        W_test = np.dot(Phi.T, U)
 
-            x = X_test[:, j].reshape(-1, 1)
+        y_hat = classifier.predict(W_test)
 
-            phi = (x - mean_face)
-
-            w = np.dot(phi.T, U)
-
-            E = np.mean((W - w.T)**2, axis=0)
-
-            index = np.argmin(E)
-
-            pred = y_train[:, index]
-            targ = y_test[:, j]
-
-            if pred == targ:
-                accuracy += 1
-
-            # store values for confusion matrix
-            if M == M_star:
-                conf_mat.append((pred, targ))
-
-        accuracy = accuracy * 100 / K
+        accuracy = 100 * np.sum(y_test.ravel() == y_hat) / K
 
         # stop timer
         _stop = time.time()
+
+        # store values for confusion matrix
+        if M == M_star:
+            cnf_matrix = confusion_matrix(
+                y_test.ravel(), y_hat, labels=list(classes))
 
         # test time
         test_dur.append(_stop - _start)
@@ -188,13 +180,14 @@ if __name__ == '__main__':
         # fix bug of progress bar after '\r'
         acc.append(accuracy)
 
-    print(acc[-1])
+    logger.error('Best Accuracy = %.2f%%' % (np.max(acc)))
 
     if _level.upper() == 'INFO':
         print('')
     logger.info('Plotting recognition accuracy versus M...')
     plt.plot(Ms, acc)
-    plt.title('Recognition Accuracy versus $\mathcal{M}$\n')
+    plt.title(
+        'Recognition Accuracy versus $\mathcal{M}$\n')
     plt.xlabel('$\mathcal{M}$: number of principle components')
     plt.ylabel('Recognition Accuracy [%]')
     plt.savefig('data/out/accuracy_versus_M.pdf',
@@ -227,11 +220,6 @@ if __name__ == '__main__':
                 format='pdf', dpi=1000, transparent=True)
     logger.info(
         'Exported at data/out/memory_versus_M.pdf...')
-
-    y_test, y_hat = zip(*conf_mat)
-
-    cnf_matrix = confusion_matrix(
-        y_test, y_hat, labels=list(classes))
 
     plt.rcParams['figure.figsize'] = [28.0, 21.0]
 
