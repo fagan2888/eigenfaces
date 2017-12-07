@@ -27,7 +27,6 @@ from visualize import plot_confusion_matrix
 # utility functions
 from utils import progress
 
-
 # logging module
 import logging
 import coloredlogs
@@ -39,7 +38,6 @@ import argparse
 import time
 import os
 
-import pdb
 from functools import reduce
 np.warnings.filterwarnings('ignore')
 
@@ -61,7 +59,7 @@ if __name__ == '__main__':
     # get log level
     _level = argv.log or ''
     # get number of principle components
-    M = argv.n_comps or 50
+    M = argv.n_comps or 100
     # get flag of standardization
     standard = argv.standard or False
     # get flag of cross validation
@@ -75,6 +73,9 @@ if __name__ == '__main__':
         coloredlogs.install(level='DEBUG', logger=logger)
     else:
         coloredlogs.install(level='WARNING', logger=logger)
+
+    logger.debug('standard=%s' % standard)
+    logger.debug('cross_validation=%s' % cv)
 
     logger.info('Fetching data...')
     data = fetch_data(ratio=0.8)
@@ -103,10 +104,11 @@ if __name__ == '__main__':
 
     if cv:
         # cross validation grid
-        params = {'gamma': np.logspace(-5, 3, 5), 'kernel': ['rbf', 'linear']}
-
+        params = {
+            'gamma': np.logspace(-5, 3, 5), 'kernel': ['rbf', 'linear'], 'C': np.logspace(0, 2, 3)}
         mean_fit_time = {k: 0 for k in params['kernel']}
         mean_score_time = {k: 0 for k in params['kernel']}
+        mean_n_support_ = 0
 
     for c in classes:
 
@@ -117,10 +119,10 @@ if __name__ == '__main__':
         l_test = -np.ones(y_test.T.shape)
         l_test[y_test.T == c] = 1
 
-        _classifier = SVC(kernel='linear', C=10, probability=True, gamma=2e-4)
+        _classifier = SVC(kernel='linear', C=1, probability=True, gamma=2e-4)
 
         if cv:
-            search = GridSearchCV(_classifier, params)
+            search = GridSearchCV(_classifier, params, n_jobs=-1)
 
             search.fit(W_train.T, l_train.ravel())
 
@@ -130,8 +132,6 @@ if __name__ == '__main__':
                                 search.cv_results_['mean_fit_time'],
                                 search.cv_results_['mean_score_time']))
 
-            pdb.set_trace()
-
             for kernel in params['kernel']:
                 _f = filter(lambda x: kernel == x[0]['kernel'], _results)
                 for _, fit_time, score_time in _f:
@@ -139,18 +139,14 @@ if __name__ == '__main__':
                     mean_score_time[kernel] += score_time
                 mean_fit_time[kernel] /= len(search.cv_results_['params']
                                              ) / len(params['kernel'])
-                mean_score_time[kernel] /= len(search.cv_results_['params']
-                                               ) / len(params['kernel'])
+                mean_score_time[kernel] /= len(
+                    search.cv_results_['params']) / len(params['kernel'])
+
+            mean_n_support_ += np.sum(classifier.n_support_)
 
         else:
             classifier = _classifier
             classifier.fit(W_train.T, l_train.ravel())
-
-        if classifier.kernel != 'rbf':
-            y_hat_train = classifier.predict(W_train.T)
-            acc_train = np.sum(l_train.ravel() == y_hat_train) / N
-            # make sure 100% training accuracy
-            assert acc_train == 1.0
 
         probs = classifier.predict_proba(W_test.T)
 
@@ -160,7 +156,11 @@ if __name__ == '__main__':
 
     scores = np.array(scores)
 
-    pdb.set_trace()
+    if cv:
+        mean_n_support_ /= len(classes)
+        logger.error('Mean `fit`   Time %s' % mean_fit_time)
+        logger.error('Mean `score` Time %s' % mean_score_time)
+        logger.error('Mean Number of Support Vectors %s' % mean_n_support_)
 
     trues = np.argmax(scores, axis=0)
 

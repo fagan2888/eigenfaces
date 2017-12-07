@@ -38,6 +38,7 @@ import argparse
 import time
 
 # built-in tools
+import pdb
 import itertools
 import os
 
@@ -59,7 +60,7 @@ if __name__ == '__main__':
     # get log level
     _level = argv.log or ''
     # get number of principle components
-    M = argv.n_comps or 50
+    M = argv.n_comps or 100
     # get flag of standardization
     standard = argv.standard or False
     # get flag of cross validation
@@ -108,13 +109,15 @@ if __name__ == '__main__':
 
     C = len(classes)
 
-    combs = itertools.combinations(classes, 2)
+    combs = list(itertools.combinations(classes, 2))
 
     if cv:
         # cross validation grid
-        params = {'gamma': np.logspace(-5, 3, 5), 'kernel': ['rbf', 'linear']}
-
+        params = {
+            'gamma': np.logspace(-5, -3, 5), 'kernel': ['rbf', 'linear'], 'C': np.logspace(0, 2, 3)}
         mean_fit_time = {k: 0 for k in params['kernel']}
+        mean_score_time = {k: 0 for k in params['kernel']}
+        mean_n_support_ = 0
 
     LEADERBOARD = np.zeros((C + 1, K))
 
@@ -131,24 +134,30 @@ if __name__ == '__main__':
         # select the training examples
         w_train = W_train.T[_index]
 
-        _classifier = SVC(kernel='linear', C=10, probability=True, gamma=2e-4)
+        _classifier = SVC(kernel='linear', C=1, gamma=2e-4)
 
         if cv:
-            search = GridSearchCV(_classifier, params)
+            search = GridSearchCV(_classifier, params, n_jobs=-1)
 
             search.fit(w_train, l_train)
 
             classifier = search.best_estimator_
 
             _results = list(zip(search.cv_results_['params'],
-                                search.cv_results_['mean_fit_time']))
+                                search.cv_results_['mean_fit_time'],
+                                search.cv_results_['mean_score_time']))
 
             for kernel in params['kernel']:
                 _f = filter(lambda x: kernel == x[0]['kernel'], _results)
-                for _, val in _f:
-                    mean_fit_time[kernel] += val
+                for _, fit_time, score_time in _f:
+                    mean_fit_time[kernel] += fit_time
+                    mean_score_time[kernel] += score_time
                 mean_fit_time[kernel] /= len(search.cv_results_['params']
                                              ) / len(params['kernel'])
+                mean_score_time[kernel] /= len(
+                    search.cv_results_['params']) / len(params['kernel'])
+
+            mean_n_support_ += np.sum(classifier.n_support_)
 
         else:
             classifier = _classifier
@@ -159,6 +168,12 @@ if __name__ == '__main__':
         for j, s in enumerate(scores):
             c = c1 if s == 1 else c2
             LEADERBOARD[c, j] += 1
+
+    if cv:
+        mean_n_support_ /= len(combs)
+        logger.error('Mean `fit`   Time %s' % mean_fit_time)
+        logger.error('Mean `score` Time %s' % mean_score_time)
+        logger.error('Mean Number of Support Vectors %s' % mean_n_support_)
 
     y_hat = np.argmax(LEADERBOARD, axis=0)
 
