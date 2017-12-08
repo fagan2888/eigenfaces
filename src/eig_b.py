@@ -105,8 +105,9 @@ if __name__ == '__main__':
         ax.imshow(img.reshape(SHAPE).T,
                   cmap=plt.cm.Greys)
         ax.set_title('Eigenface %d' % i)
+    fig.tight_layout()
     fig.savefig('data/out/eff_eigenfaces.pdf',
-                format='pdf', dpi=1000, transparent=True)
+                format='pdf', dpi=300, transparent=True)
     logger.info('Exported at data/out/eff_eigenfaces.pdf...')
 
     plt.figure(figsize=(8.0, 6.0))
