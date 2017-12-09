@@ -60,9 +60,9 @@ if __name__ == '__main__':
     # get log level
     _level = argv.log or ''
     # get number of principle components
-    M = argv.n_comps or 100
+    M = argv.n_comps or 121
     # get flag of standardization
-    standard = argv.standard or False
+    standard = argv.standard or True
     # get flag of cross validation
     cv = argv.cross_validation or False
 
@@ -82,27 +82,19 @@ if __name__ == '__main__':
 
     D, N = X_train.shape
 
-    pca = PCA(n_comps=M, logger=logger)
+    pca = PCA(n_comps=M, standard=standard, logger=logger)
     logger.info('Applying PCA with M=%d' % M)
 
     # normalise data
-    _W_train = pca.fit(X_train)
-    _W_mean = np.mean(_W_train, axis=1)
-    logger.debug('_W_mean.shape=%s' % (_W_mean.shape,))
-    _W_std = np.std(_W_train, axis=1)
-    logger.debug('_W_std.shape=%s' % (_W_std.shape,))
-
-    W_train = ((_W_train.T - _W_mean) / _W_std).T
-    logger.debug('W_train.shape=%s' % (_W_train.shape,))
+    W_train = pca.fit(X_train)
+    logger.debug('W_train.shape=%s' % (W_train.shape,))
 
     X_test, y_test = data['test']
     I, K = X_test.shape
     assert I == D, logger.error(
         'Number of features of test and train data do not match, %d != %d' % (D, I))
 
-    _W_test = pca.transform(X_test)
-
-    W_test = ((_W_test.T - _W_mean) / _W_std).T
+    W_test = pca.transform(X_test)
     logger.debug('W_test.shape=%s' % (W_test.shape,))
 
     classes = set(y_train.ravel())

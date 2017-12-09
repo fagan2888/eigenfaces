@@ -115,9 +115,6 @@ if __name__ == '__main__':
         # preprocess training labels
         l_train = -np.ones(y_train.T.shape)
         l_train[y_train.T == c] = 1
-        # preprocess testing labels
-        l_test = -np.ones(y_test.T.shape)
-        l_test[y_test.T == c] = 1
 
         _classifier = SVC(kernel='linear', C=1, probability=True, gamma=2e-4)
 
@@ -151,8 +148,6 @@ if __name__ == '__main__':
         probs = classifier.predict_proba(W_test.T)
 
         scores.append(probs[:, 1])
-
-        acc_test = np.sum(l_test.ravel() == probs) / K
 
     scores = np.array(scores)
 
