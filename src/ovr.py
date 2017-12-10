@@ -1,41 +1,19 @@
-# helper data preprocessor
-from reader import fetch_data
-from pca import PCA
-
-M = 121
-standard = True
-
-data = fetch_data(ratio=0.8)
-
-X_train, y_train = data['train']
-
-D, N = X_train.shape
-
-pca = PCA(n_comps=M, standard=standard)
-
-W_train = pca.fit(X_train)
-
-X_test, y_test = data['test']
-I, K = X_test.shape
-
-W_test = pca.transform(X_test)
-
-scores = []
-
-params = {'C': 1, 'gamma': 2e-4, 'kernel': 'linear'}
-
-
 import numpy as np
 from sklearn.svm import SVC
 
 
 class OVR(object):
 
-    def __init__(self):
+    def __init__(self, kernel='rbf', C=1, gamma=1e-5, degree=2):
         # dictionary of L SVM classifiers
         self.classifiers = {}
         # list of label classes
         self.classes = []
+        # hyperparameters
+        self.kernel = kernel
+        self.C = C
+        self.gamma = gamma
+        self.degree = degree
 
     def fit(self, X_train, y_train):
         # L label classes
@@ -47,9 +25,10 @@ class OVR(object):
             # set labels to 1 if (class==l)
             l_train[y_train.T == l] = 1
             # init SVM binary classifier
-            svm = SVC(kernel=params['kernel'],
-                      C=params['C'],
-                      gamma=params['gamma'],
+            svm = SVC(kernel=self.kernel,
+                      C=self.C,
+                      gamma=self.gamma,
+                      degree=self.degree,
                       probability=True)
             # fit SVM
             svm.fit(X_train.T, l_train.ravel())
@@ -80,9 +59,3 @@ class OVR(object):
         # get accuracy
         accuracy = np.sum(y_test == y_hat) / K
         return accuracy
-
-
-ovr = OVR()
-ovr.fit(W_train, y_train)
-acc = ovr.score(W_test, y_test)
-print('Accuracy = %.2f%%' % (acc * 100))

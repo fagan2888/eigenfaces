@@ -1,41 +1,21 @@
 # scientific computing library
 import numpy as np
 from sklearn.svm import SVC
-
-# helper data preprocessor
-from reader import fetch_data
-from pca import PCA
-
 import itertools
-
-M = 121
-standard = True
-
-data = fetch_data(ratio=0.8)
-
-X_train, y_train = data['train']
-
-D, N = X_train.shape
-
-pca = PCA(n_comps=M, standard=standard)
-
-W_train = pca.fit(X_train)
-
-X_test, y_test = data['test']
-I, K = X_test.shape
-
-W_test = pca.transform(X_test)
-
-params = {'C': 1, 'gamma': 2e-4, 'kernel': 'linear'}
 
 
 class OVO(object):
 
-    def __init__(self):
+    def __init__(self, kernel='rbf', C=1, gamma=1e-5, degree=2):
         # dictionary of L(L-1)/2 SVM classifiers
         self.classifiers = {}
         # list of label pair combinations
         self.combinations = []
+        # hyperparameters
+        self.kernel = kernel
+        self.C = C
+        self.gamma = gamma
+        self.degree = degree
 
     def fit(self, X_train, y_train):
         # L label classes
@@ -57,10 +37,10 @@ class OVO(object):
             # select the label examples
             y = y[_index].ravel()
             # init SVM binary classifier
-            svm = SVC(kernel=params['kernel'],
-                      C=params['C'],
-                      gamma=params['gamma'],
-                      probability=True)
+            svm = SVC(kernel=self.kernel,
+                      C=self.C,
+                      gamma=self.gamma,
+                      degree=self.degree)
             # fit SVM
             svm.fit(X, y)
             # store (c1, c2) trained SVM
@@ -90,9 +70,3 @@ class OVO(object):
         # get accuracy
         accuracy = np.sum(y_test == y_hat) / K
         return accuracy
-
-
-ovo = OVO()
-ovo.fit(W_train, y_train)
-acc = ovo.score(W_test, y_test)
-print('Accuracy = %.2f%%' % (acc * 100))

@@ -5,7 +5,6 @@ matplotlib.use('Agg')
 # scientific computing library
 import numpy as np
 from sklearn.svm import SVC
-from sklearn.tree import DecisionTreeClassifier
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import confusion_matrix
 
@@ -24,9 +23,6 @@ from pca import PCA
 # visualization functions
 from visualize import plot_confusion_matrix
 
-# utility functions
-from utils import progress
-
 # logging module
 import logging
 import coloredlogs
@@ -37,9 +33,9 @@ import argparse
 # built-in tools
 import time
 import os
-
 from functools import reduce
 np.warnings.filterwarnings('ignore')
+
 
 if __name__ == '__main__':
 
@@ -59,7 +55,7 @@ if __name__ == '__main__':
     # get log level
     _level = argv.log or ''
     # get number of principle components
-    M = argv.n_comps or 100
+    M = argv.n_comps or 121
     # get flag of standardization
     standard = argv.standard or False
     # get flag of cross validation
