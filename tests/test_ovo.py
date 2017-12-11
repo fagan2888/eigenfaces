@@ -7,7 +7,7 @@ from src.ovo import OVO
 
 import itertools
 
-M = 121
+M = 121 
 standard = True
 
 data = fetch_data(ratio=0.8)

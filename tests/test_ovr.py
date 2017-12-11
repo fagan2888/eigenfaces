@@ -6,7 +6,7 @@ from src.pca import PCA
 from src.ovr import OVR
 
 M = 121
-standard = True
+standard = True 
 
 data = fetch_data(ratio=0.8)
 

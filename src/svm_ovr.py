@@ -98,6 +98,8 @@ if __name__ == '__main__':
 
     scores = []
 
+    support_vectors_ = []
+
     if cv:
         # cross validation grid
         params = {
@@ -140,6 +142,8 @@ if __name__ == '__main__':
         else:
             classifier = _classifier
             classifier.fit(W_train.T, l_train.ravel())
+
+            support_vectors_.append(classifier.support_vectors_)
 
         probs = classifier.predict_proba(W_test.T)
 

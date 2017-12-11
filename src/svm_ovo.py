@@ -103,6 +103,8 @@ if __name__ == '__main__':
 
     combs = list(itertools.combinations(classes, 2))
 
+    support_vectors_ = []
+
     if cv:
         # cross validation grid
         params = {
@@ -154,6 +156,8 @@ if __name__ == '__main__':
         else:
             classifier = _classifier
             classifier.fit(w_train, l_train)
+
+            support_vectors_.append(classifier.support_vectors_)
 
         scores = classifier.predict(W_test.T)
 
