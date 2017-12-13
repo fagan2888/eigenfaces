@@ -2,11 +2,11 @@
 from src.reader import fetch_data
 # custom PCA transformer
 from src.pca import PCA
-# custom One-Versus-Rest SVM
-from src.ovr import OVR
+# KNN Classifer
+from sklearn.neighbors import KNeighborsClassifier
 
 M = 121
-standard = True
+standard = False
 
 data = fetch_data(ratio=0.8)
 
@@ -23,9 +23,7 @@ I, K = X_test.shape
 
 W_test = pca.transform(X_test)
 
-params = {'C': 1, 'gamma': 2e-4, 'kernel': 'linear'}
-
-ovr = OVR(**params)
-ovr.fit(W_train, y_train)
-acc = ovr.score(W_test, y_test)
+nn = KNeighborsClassifier(n_neighbors=1)
+nn.fit(W_train.T, y_train.T.ravel())
+acc = nn.score(W_test.T, y_test.T.ravel())
 print('Accuracy = %.2f%%' % (acc * 100))
