@@ -111,3 +111,19 @@ class PCA(object):
             return ((W.T - self.W_mean) / self.W_std).T
         else:
             return W
+
+    def reconstruct(self, W):
+        """Recontruct compressed data.
+
+        Parameters
+        ----------
+        W: numpy.ndarray
+            Projection coefficients matrix
+
+        Returns
+        -------
+        X_hat: numpy.ndarray
+            Reconstructed features matrix
+        """
+        A_hat = np.dot(self.U, W).reshape(-1, 1)
+        return A_hat
